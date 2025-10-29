@@ -1,0 +1,221 @@
+{% extends "users/base.html" %}
+{% load static %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-8">
+    <div class="card p-4 shadow-lg border-0 rounded-3 fade-in">
+
+      <!-- Profile Header -->
+      <div class="text-center mb-4">
+        <div id="avatarDropArea" class="avatar-drop-area mx-auto position-relative">
+          {% if user.profile.avatar %}
+            <img src="{{ user.profile.avatar.url }}" alt="Avatar"
+                 class="rounded-circle border border-3 border-success shadow avatar-img"
+                 width="120" height="120" id="profileAvatar">
+          {% else %}
+            <img src="{% static 'img/default_avatar.png' %}" alt="Default Avatar"
+                 class="rounded-circle border border-3 border-secondary shadow avatar-img"
+                 width="120" height="120" id="profileAvatar">
+          {% endif %}
+        </div>
+        <h4 class="fw-bold mt-3">{{ user.username }}</h4>
+        <p class="text-muted">{{ user.email }}</p>
+      </div>
+
+      <!-- Readonly Profile Info -->
+      <div id="profileReadonly">
+        <div class="row mb-2">
+          <div class="col-md-6"><strong>First Name:</strong> {{ user.first_name|default:"-" }}</div>
+          <div class="col-md-6"><strong>Last Name:</strong> {{ user.last_name|default:"-" }}</div>
+        </div>
+        <p><strong>Bio:</strong> {{ user.profile.bio|default:"No bio yet." }}</p>
+        <div class="row mb-2">
+          <div class="col-md-6"><strong>Gender:</strong> {{ user.profile.gender|default:"-" }}</div>
+          <div class="col-md-6"><strong>DOB:</strong> {{ user.profile.dob|date:"M d, Y"|default:"-" }}</div>
+        </div>
+        <p><strong>Location:</strong> {{ user.profile.location|default:"-" }}</p>
+        <p><strong>Preferences:</strong>
+          {% if preferences_list %}
+            {% for pref in preferences_list %}
+              <span class="badge bg-primary me-1">{{ pref }}</span>
+            {% endfor %}
+          {% else %}
+            <span class="text-muted">No preferences set</span>
+          {% endif %}
+        </p>
+        <p><strong>Theme:</strong>
+          <span class="badge bg-dark text-white" id="currentTheme">{{ user.profile.theme|default:"default" }}</span>
+        </p>
+
+        <div class="text-center">
+          <button type="button" class="btn btn-primary" id="editBtn">
+            <i class="bi bi-pencil-square me-1"></i>Edit Profile
+          </button>
+          <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-left me-1"></i>Back
+          </a>
+        </div>
+      </div>
+
+      <!-- Edit Form -->
+      <form method="post" enctype="multipart/form-data" novalidate id="profileForm" class="d-none">
+        {% csrf_token %}
+
+        {% if u_form.errors or p_form.errors %}
+          <div class="alert alert-danger">
+            <ul>
+              {% for field in u_form %}
+                {% for error in field.errors %}
+                  <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                {% endfor %}
+              {% endfor %}
+              {% for field in p_form %}
+                {% for error in field.errors %}
+                  <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                {% endfor %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        <!-- Avatar Upload -->
+        <div class="text-center mb-3">
+          <img src="{{ user.profile.avatar.url|default:avatar_default}}"
+               alt="Avatar" class="rounded-circle shadow avatar-img" width="120" height="120" id="avatarPreview">
+          <input type="file" name="avatar" id="avatarInput" class="form-control mt-2" accept="image/*">
+          <small class="text-muted">Choose an avatar (image will preview immediately)</small>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">{{ u_form.first_name.label_tag }} {{ u_form.first_name }}</div>
+          <div class="col-md-6 mb-3">{{ u_form.last_name.label_tag }} {{ u_form.last_name }}</div>
+        </div>
+
+        <div class="mb-3">{{ p_form.bio.label_tag }} {{ p_form.bio }}</div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">{{ p_form.gender.label_tag }} {{ p_form.gender }}</div>
+          <div class="col-md-6 mb-3">{{ p_form.dob.label_tag }} {{ p_form.dob }}</div>
+        </div>
+
+        <div class="mb-3">{{ p_form.location.label_tag }} {{ p_form.location }}</div>
+
+        <!-- Preferences -->
+        <div class="mb-3">
+          <label class="form-label">Preferences</label>
+          <input type="text" id="preferencesInput" class="form-control mb-2" placeholder="Add preferences...">
+          <div id="preferencesTags" class="d-flex flex-wrap gap-2"></div>
+          <input type="hidden" name="preferences" id="preferencesHidden" value="{{ user.profile.preferences }}">
+        </div>
+
+        <!-- Theme -->
+        <div class="mb-3">
+          <label for="id_theme" class="form-label">{{ p_form.theme.label }}</label>
+          {{ p_form.theme }}
+          <small class="text-muted">Theme will preview immediately.</small>
+        </div>
+
+        <button type="submit" class="btn btn-success w-100 rounded-pill">
+          <i class="bi bi-save me-1"></i>Save Changes
+        </button>
+        <button type="button" class="btn btn-secondary w-100 rounded-pill mt-2" id="cancelBtn">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Toggle edit mode
+  const editBtn = document.getElementById("editBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const readonlyDiv = document.getElementById("profileReadonly");
+  const editForm = document.getElementById("profileForm");
+
+  editBtn.addEventListener("click", () => {
+    readonlyDiv.classList.add("d-none");
+    editForm.classList.remove("d-none");
+  });
+
+  cancelBtn.addEventListener("click", () => {
+    editForm.classList.add("d-none");
+    readonlyDiv.classList.remove("d-none");
+    location.reload();
+  });
+
+  // Preferences input
+  const prefInput = document.getElementById("preferencesInput");
+  const prefTags = document.getElementById("preferencesTags");
+  const prefHidden = document.getElementById("preferencesHidden");
+
+  function updateHidden() {
+    const values = Array.from(prefTags.children).map(t => t.textContent);
+    prefHidden.value = values.join(",");
+  }
+
+  function addTag(value) {
+    const tag = document.createElement("span");
+    tag.className = "badge bg-primary me-1";
+    tag.textContent = value;
+    tag.onclick = () => { tag.remove(); updateHidden(); };
+    prefTags.appendChild(tag);
+    updateHidden();
+  }
+
+  // Initialize existing preferences
+  if(prefHidden.value) {
+    prefHidden.value.split(",").forEach(val => {
+      if(val.trim()) addTag(val.trim());
+    });
+  }
+
+  if(prefInput) {
+    prefInput.addEventListener("keypress", function(e) {
+      if(e.key === "Enter") {
+        e.preventDefault();
+        const val = prefInput.value.trim();
+        if(val) {
+          addTag(val);
+          prefInput.value = "";
+        }
+      }
+    });
+  }
+
+  editForm.addEventListener("submit", updateHidden);
+
+  // Live theme preview
+  const themeSelect = document.getElementById("id_theme");
+  const currentThemeBadge = document.getElementById("currentTheme");
+  themeSelect.addEventListener("change", function() {
+    document.documentElement.setAttribute("data-bs-theme", this.value);
+    currentThemeBadge.textContent = this.value;
+  });
+
+  // Avatar live preview
+  const avatarInput = document.getElementById("avatarInput");
+  const avatarPreview = document.getElementById("avatarPreview");
+
+  avatarInput.addEventListener("change", function() {
+    const file = this.files[0];
+    if(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        avatarPreview.src = e.target.result;
+      }
+      reader.readAsDataURL(file);
+    }
+  });
+
+</script>
+
+<style>
+  .fade-in { animation: fadeIn 0.5s ease-in-out; }
+  @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+  .avatar-img:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(0,123,255,0.5); cursor: pointer; }
+</style>
+{% endblock %}

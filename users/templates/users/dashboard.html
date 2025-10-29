@@ -1,0 +1,311 @@
+{% extends "users/base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <a href="{% url 'home' %}" class="btn btn-outline-primary mb-3">🏠 Home</a>
+  <h2 class="fw-bold mb-4"><i class="bi bi-bar-chart me-2"></i>Quiz Dashboard</h2>
+
+  <!-- ===== Summary Cards ===== -->
+  <div class="row mb-5 text-center">
+    <div class="col-md-4 mb-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h5 class="card-title"><i class="bi bi-trophy text-warning me-2"></i>Total Score</h5>
+          <p class="display-5 fw-bold text-success">{{ total_score }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h5 class="card-title"><i class="bi bi-check-circle text-primary me-2"></i>Completed Quizzes</h5>
+          <p class="display-6 fw-bold text-primary">{{ completed|length }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h5 class="card-title"><i class="bi bi-hourglass-split text-danger me-2"></i>Incomplete Quizzes</h5>
+          <p class="display-6 fw-bold text-danger">{{ incomplete|length }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Completed Quizzes ===== -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-success text-white fw-semibold">
+      <i class="bi bi-check2-circle me-2"></i>Completed Quizzes
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Category</th>
+            <th>Subcategory</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for quiz in completed %}
+            <tr>
+              <td>{{ quiz.category }}</td>
+              <td>{{ quiz.subcategory_display }}</td>
+
+              <td><span class="badge bg-success fs-6">{{ quiz.score }}</span></td>
+              <td>
+                <span class="badge bg-primary">
+                  <i class="bi bi-award me-1"></i>Completed
+                </span>
+              </td>
+              <td>{{ quiz.date_taken|date:"Y-m-d H:i" }}</td>
+              <td>
+                <a href="{% url 'quiz_result' quiz.id %}" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-eye"></i> View
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="text-center text-muted">No completed quizzes yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Incomplete Quizzes ===== -->
+  <div class="card shadow-sm border-0 mb-4">  
+    <div class="card-header bg-warning text-dark fw-semibold">
+      <i class="bi bi-hourglass-split me-2"></i>Incomplete Quizzes
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Category</th>
+            <th>Subcategory</th>
+            <th>Progress</th>
+            <th>Date Started</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for quiz in incomplete %}
+            {% with progress=quiz.progress|default:0 %}
+            <tr>
+              <td>{{ quiz.category }}</td>
+              <td>{{ quiz.subcategory_display }}</td>
+              <td style="width: 35%;">
+                <div class="progress" style="height: 18px;">
+                  <div 
+                    class="progress-bar progress-bar-striped progress-bar-animated
+                    {% if progress >= 75 %}
+                      bg-success
+                    {% elif progress >= 50 %}
+                      bg-warning
+                    {% else %}
+                      bg-danger
+                    {% endif %}"
+                    role="progressbar"
+                    aria-valuenow="{{ progress }}"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    style="width: {{ progress }}%;" > </div>
+                    {{ progress }}%
+                  </div>
+                </div>
+              </td>
+              <td>{{ quiz.date_taken|date:"Y-m-d H:i" }}</td>
+              <td>
+                <a href="{% url 'retake_quiz' quiz.id %}" class="btn btn-sm btn-outline-warning fw-semibold">
+                  <i class="bi bi-play-circle me-1"></i>Resume
+                </a>
+              </td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No incomplete quizzes found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Leaderboard ===== -->
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-info text-white fw-semibold">
+      <i class="bi bi-people-fill me-2"></i>Top Rankings
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Rank</th>
+            <th>User</th>
+            <th>Total Score</th>
+            <th>Quizzes Taken</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rank in rankings %}
+            <tr>
+              <td class="fw-bold text-secondary">#{{ forloop.counter }}</td>
+              <td>{{ rank.user__username }}</td>
+              <td>{{ rank.total_score }}</td>
+              <td>{{ rank.quizzes }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-center text-muted">No rankings available yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<div class="container mt-5 mb-5">
+  <!-- ===== Earned Badges Section ===== -->
+  <h4 class="fw-bold mb-4 text-primary-emphasis d-flex align-items-center">
+    <i class="bi bi-award-fill text-warning me-2 fs-3"></i>
+    <span>Earned Badges</span>
+  </h4>
+
+  <div class="row g-4 justify-content-start">
+    {% for user_badge in request.user.user_badges.all %}
+      <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+        <div class="badge-card shadow-lg rounded-4 text-center p-4 position-relative border-0"
+             style="background: linear-gradient(145deg, #ffffff, #f1f5f9);
+                    transition: all 0.3s ease; cursor: pointer;">
+          
+          <div class="badge-glow position-absolute top-0 start-0 w-100 h-100 rounded-4"
+               style="background: radial-gradient(circle at 50% 0%, rgba(255,215,0,0.15), transparent 70%);
+                      pointer-events: none;"></div>
+
+          <div class="position-relative">
+            {% if user_badge.badge.icon %}
+              <img src="{{ user_badge.badge.icon.url }}" alt="{{ user_badge.badge.name }}"
+                   class="img-fluid rounded-circle shadow-sm mb-3 border border-3 border-light-subtle"
+                   style="width:90px; height:90px; object-fit:cover;">
+            {% else %}
+              <img src="/media/badgee.png" alt="{{ user_badge.badge.name }}"
+                   class="img-fluid rounded-circle shadow-sm mb-3 border border-3 border-light-subtle"
+                   style="width:90px; height:90px; object-fit:cover;">
+            {% endif %}
+          </div>
+
+          <h6 class="fw-semibold mb-1 text-dark">{{ user_badge.badge.name }}</h6>
+          <p class="text-muted small mb-1">
+            {{ user_badge.badge.get_tier_display }}
+          </p>
+          <small class="text-secondary">
+            🏆 Earned on {{ user_badge.earned_at|date:"M d, Y" }}
+          </small>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12 text-center">
+        <div class="p-5 rounded-4 border shadow-sm"
+             style="background: linear-gradient(120deg, #f8fafc, #eef2f3);">
+          <i class="bi bi-stars fs-1 text-warning mb-3"></i>
+          <h5 class="fw-semibold text-dark">No Badges Earned Yet</h5>
+          <p class="text-muted mb-0">
+            Keep learning, take more quizzes, and earn your first badge soon!
+          </p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+  <!-- ===== Upcoming Badges Section ===== -->
+  <h4 class="fw-bold mt-5 mb-4 text-secondary d-flex align-items-center">
+    🔒 <span class="ms-2">Upcoming Badges</span>
+  </h4>
+
+  <div class="row g-4 mb-5">
+    {% for b in all_badges %}
+      {% if b.id not in owned_badge_ids %}
+        {% with progress=badge_progress.b.id|default:0 %}
+        <div class="col-6 col-sm-4 col-md-3 col-lg-2 text-center">
+          <div class="badge-card locked p-3 rounded-4 shadow-sm position-relative bg-light border border-1 border-muted-subtle"
+               style="overflow: hidden; transition: all 0.3s ease;">
+            
+            {% if b.icon %}
+              <img src="{{ b.icon.url }}" alt="{{ b.name }}"
+                   class="img-fluid rounded-circle mb-2"
+                   style="width:85px;height:85px;object-fit:cover;filter: grayscale(90%) blur(1.5px) brightness(90%);">
+            {% else %}
+              <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-2 border"
+                   style="width:85px;height:85px;filter:grayscale(90%) blur(1.5px);">
+                🔒
+              </div>
+            {% endif %}
+
+            <div class="fw-semibold text-muted small">{{ b.name }}</div>
+            <small class="text-muted">{{ b.get_tier_display }}</small>
+
+            <!-- Progress Bar -->
+            <div class="progress mt-2" style="height:6px; border-radius:6px;">
+              <div class="progress-bar bg-primary" role="progressbar" 
+                   style="width: {{ progress }}%; transition: width 1s ease;"
+                   aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <small class="text-muted d-block mt-1">{{ progress }}% to unlock</small>
+
+            <div class="locked-overlay position-absolute top-0 start-0 w-100 h-100 rounded-4 
+                        d-flex align-items-center justify-content-center bg-dark bg-opacity-50">
+              <i class="bi bi-lock-fill fs-3 text-white"></i>
+            </div>
+          </div>
+        </div>
+        {% endwith %}
+      {% endif %}
+    {% endfor %}
+  </div>
+
+</div>
+
+<!-- ====== Custom Styling ====== -->
+<style>
+  .badge-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  }
+
+  .badge-card.earned:hover img {
+    transform: scale(1.05);
+    transition: transform 0.25s ease;
+  }
+
+  .badge-card.locked:hover img {
+    filter: grayscale(60%) blur(1px) brightness(95%);
+  }
+
+  .locked-overlay {
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .badge-card.locked:hover .locked-overlay {
+    opacity: 1;
+  }
+
+  .progress {
+    background-color: rgba(0,0,0,0.05);
+  }
+
+  @media (max-width: 576px) {
+    .badge-card img {
+      width: 70px;
+      height: 70px;
+    }
+  }
+</style>
+
+{% endblock %}

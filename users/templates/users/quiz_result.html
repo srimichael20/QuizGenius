@@ -1,0 +1,83 @@
+{% extends "users/base.html" %}
+{% block title %}Quiz Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card p-4 shadow-lg border-0 rounded-3">
+    <div class="text-center mb-4">
+      <h2 class="fw-bold">🎯 Quiz Results</h2>
+      <h4 class="mt-2">
+        Your Score:
+        <span class="text-primary">{{ score }}</span> / {{ total }}
+        ({{ score_percentage }}%)
+      </h4>
+
+      {% if status_msg == "excellent" %}
+        <p class="text-success mt-2 fw-semibold">🔥 Excellent! You nailed it!</p>
+      {% elif status_msg == "good" %}
+        <p class="text-warning mt-2 fw-semibold">👍 Good effort, keep practicing!</p>
+      {% else %}
+        <p class="text-danger mt-2 fw-semibold">💡 Don’t worry, you’ll improve next time!</p>
+      {% endif %}
+    </div>
+    <hr>
+
+    <!-- Results Breakdown -->
+    {% for r in results %}
+      <div class="mb-4">
+        <h5 class="fw-semibold">Q{{ forloop.counter }}. {{ r.question }}</h5>
+
+        <!-- User Answer -->
+        <p>
+          <strong>Your Answer:</strong>
+          {% if r.user_answer %}
+            {% if r.is_correct %}
+              <span class="text-success">{{ r.user_answer }}</span>
+            {% else %}
+              <span class="text-danger">{{ r.user_answer }}</span>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">Not answered</span>
+          {% endif %}
+        </p>
+
+        <!-- Correct Answer -->
+        <p>
+          <strong>Correct Answer:</strong>
+          <span class="text-primary">{{ r.correct_answer }}</span>
+        </p>
+
+        <!-- Status Badge -->
+        {% if r.is_correct %}
+          <span class="badge bg-success px-3 py-2">✔ Correct</span>
+        {% else %}
+          <span class="badge bg-danger px-3 py-2">✘ Wrong</span>
+        {% endif %}
+
+        <!-- Explanation for wrong answers -->
+        {% if not r.is_correct and r.explanation %}
+          <div class="alert alert-info mt-2 p-2">
+            <strong>Explanation:</strong> {{ r.explanation }}
+          </div>
+        {% endif %}
+      </div>
+      <hr>
+    {% endfor %}
+
+   <!-- Action Buttons -->
+    <div class="d-flex justify-content-between mt-4 flex-wrap gap-2">
+        {% if quiz_id %}
+            <!-- Retake the same quiz -->
+            <a href="{% url 'start_quiz' quiz_id=quiz_id %}" class="btn btn-primary">🔄 Retake Quiz</a>
+        {% endif %}
+
+        <!-- Start a brand new AI quiz -->
+        <a href="{% url 'start_quiz' %}" class="btn btn-success">✨ New Quiz</a>
+
+        <a href="{% url 'home' %}" class="btn btn-outline-primary">🏠 Home</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">📊 Dashboard</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

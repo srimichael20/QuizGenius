@@ -1,0 +1,412 @@
+{% extends "users/base.html" %}
+{% load custom_filters %}
+{% block title %}Take Quiz{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+  <div class="row justify-content-center">
+    <div class="col-xl-10 col-lg-11 col-md-12">
+
+      <!-- Quiz Card -->
+      <div class="card shadow-lg border-0 rounded-4 p-0 position-relative overflow-hidden">
+
+        <!-- Top bar / header -->
+        <div class="d-flex justify-content-between align-items-center p-3 bg-white border-bottom">
+          <div>
+            <h4 class="mb-0 fw-bold">🧠 Take Quiz</h4>
+            <small class="text-muted">Total Questions: {{ questions|length }} · Time left: <span id="timerTextSmall">--:--</span></small>
+          </div>
+          <div class="text-end">
+            <small class="text-muted me-2">Theme: <strong>{{ request.user.profile.theme|default:'default' }}</strong></small>
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()">Reload</button>
+          </div>
+        </div>
+
+        <div class="row g-0">
+          <!-- Left: Questions -->
+          <div class="col-lg-8 p-4">
+
+            <!-- Initial Instruction Screen -->
+            <div id="quizInstructions" class="text-center">
+              <h2 class="fw-bold text-primary mb-2">📝 Quiz Instructions</h2>
+              <p class="text-muted mb-3">Please read the instructions carefully before starting the quiz.</p>
+              <ul class="list-group mb-3 text-start">
+                <li class="list-group-item">Total Questions: {{ questions|length }}</li>
+                <li class="list-group-item">Use the numbered panel on the right to jump to any question</li>
+                <li class="list-group-item">Color Indicators: <span class="badge bg-success">Answered</span> / <span class="badge bg-primary">Review</span> / <span class="badge bg-danger">Unanswered</span> / <span class="badge bg-secondary">Not Visited</span></li>
+                <li class="list-group-item">Timer will auto-submit when time runs out</li>
+              </ul>
+              <button class="btn btn-success btn-lg px-4" onclick="startQuiz()">Start Quiz</button>
+            </div>
+
+            <!-- Quiz Content -->
+            <div id="quizContent" style="display:none;">
+
+              <!-- Circular Timer + progress -->
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="position-relative d-inline-block">
+                    <svg class="progress-ring" width="80" height="80" aria-hidden="true">
+                      <circle class="progress-ring__circle" stroke-width="8" fill="transparent" r="36" cx="40" cy="40"/>
+                    </svg>
+                    <span id="timerText" class="position-absolute top-50 start-50 translate-middle fs-6 fw-bold">--:--</span>
+                  </div>
+                  <div>
+                    <div id="progressText" class="fw-semibold">Question <span id="currentIndex">1</span> of {{ questions|length }}</div>
+                    <div class="progress" style="height:6px; width:220px;">
+                      <div id="progressBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <button class="btn btn-outline-primary btn-sm me-2" onclick="showPreSubmitModal()">Review & Submit</button>
+                </div>
+              </div>
+
+              <!-- Quiz Form -->
+              <form id="quizForm" method="post" action="{% url 'submit_quiz' quiz_id=quiz_id %}">
+                {% csrf_token %}
+                {% if questions %}
+                  <div id="quizQuestionsContainer">
+                    {% for q in questions %}
+                      <div class="question-card p-3 mb-3 rounded-3 border shadow-sm" 
+                           data-qindex="{{ forloop.counter0 }}" 
+                           style="display: {% if forloop.first %}block{% else %}none{% endif %};">
+                        <h5 class="fw-semibold mb-3">Q{{ forloop.counter }}. {{ q.question }}</h5>
+
+                        <div class="options-list ps-3">
+                          {% comment %} Use 1-based question name (q1,q2...) so backend receives predictable keys {% endcomment %}
+                          {% for opt in q.options %}
+                            <div class="form-check mb-2 d-flex align-items-center">
+                              <input type="radio" 
+                                     class="form-check-input answer-option" 
+                                     name="q{{ forloop.parentloop.counter }}" 
+                                     value="{{ opt|escape }}" 
+                                     data-qindex="{{ forloop.parentloop.counter0 }}" 
+                                     id="q{{ forloop.parentloop.counter0 }}_{{ forloop.counter }}">
+                              <label class="form-check-label w-100 ms-2" for="q{{ forloop.parentloop.counter0 }}_{{ forloop.counter }}">
+                                {{ opt }}
+                              </label>
+                            </div>
+                          {% endfor %}
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between mt-3 flex-wrap">
+                          <button type="button" class="btn btn-outline-secondary btn-sm mb-1" onclick="previousQuestion()">Previous</button>
+                          <div class="d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleReview()">Review</button>
+                            <button type="button" class="btn btn-success btn-sm" onclick="saveAnswer()">Save</button>
+                            <button type="button" class="btn btn-info btn-sm" onclick="saveNext()">Save & Next</button>
+                          </div>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Submit Button (hidden because we use modal) -->
+                  <div class="text-center mt-3">
+                    <button type="submit" class="btn btn-success px-4 py-2 fw-bold rounded-pill shadow-sm d-none">
+                      <i class="bi bi-check-circle me-2"></i>Submit Quiz
+                    </button>
+                  </div>
+                {% else %}
+                  <div class="alert alert-warning text-center fw-semibold mt-3">
+                    ⚠ No questions found. Please <a href="{% url 'start_quiz' %}" class="alert-link">start a new quiz</a>.
+                  </div>
+                {% endif %}
+              </form>
+
+            </div>
+          </div>
+
+          <!-- Right: Navigation Panel -->
+          <div class="col-lg-4 p-3 border-start bg-light" style="min-height:320px;">
+            <h6 class="fw-semibold">Question Navigator</h6>
+            <div class="d-flex flex-wrap mt-2" id="questionNav">
+              {% for q in questions %}
+                <button type="button" class="btn q-nav-btn notvisited m-1" data-qindex="{{ forloop.counter0 }}" data-visited="false" aria-label="Question {{ forloop.counter }}">{{ forloop.counter }}</button>
+              {% endfor %}
+            </div>
+
+            <div class="mt-4">
+              <h6 class="fw-semibold">Legend</h6>
+              <div class="d-flex gap-2 flex-wrap mt-2">
+                <span class="badge bg-success">Answered</span>
+                <span class="badge bg-primary">Review</span>
+                <span class="badge bg-danger">Unanswered</span>
+                <span class="badge bg-secondary">Not Visited</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pre-submit Review Modal -->
+<div class="modal fade" id="preSubmitModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <h5 class="fw-bold mb-3 text-center">🔍 Final Review Summary</h5>
+      <div id="preSubmitSummary" class="d-flex justify-content-around flex-wrap mb-3"></div>
+      <div class="text-center">
+        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="confirmSubmitBtn">Submit Quiz</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .q-nav-btn.notvisited { background-color:#6c757d;color:#fff; }
+  .q-nav-btn.answered { background-color:#198754;color:#fff; }
+  .q-nav-btn.review { background-color:#0d6efd;color:#fff; }
+  .q-nav-btn.unanswered { background-color:#dc3545;color:#fff; }
+  .q-nav-btn.current { border:2px solid #0d6efd; }
+  .progress-ring__circle { transition: stroke-dashoffset 0.5s linear; transform: rotate(-90deg); transform-origin:50% 50%; }
+</style>
+
+<script>
+// Theme (keeps your existing theme logic)
+const theme = "{{ request.user.profile.theme|default:'default' }}";
+const root = document.documentElement;
+switch(theme){
+  case 'dark': root.style.setProperty('--card-bg','#1c1c1c'); root.style.setProperty('--card-text','#f1f1f1'); root.style.setProperty('--btn-success-bg','#198754'); break;
+  case 'gradient': root.style.setProperty('--card-bg','linear-gradient(135deg,#6a11cb 0%,#2575fc 100%)'); root.style.setProperty('--card-text','#fff'); break;
+  case 'matrix': root.style.setProperty('--card-bg','#000'); root.style.setProperty('--card-text','#0f0'); break;
+  case 'aurora': root.style.setProperty('--card-bg','linear-gradient(120deg,#00111f,#003b5c,#220044)'); root.style.setProperty('--card-text','#e1f5ff'); break;
+}
+
+let questions = document.querySelectorAll('.question-card');
+let qNavBtns = Array.from(document.querySelectorAll('.q-nav-btn'));
+let currentQ = 0;
+const quizKey = "quiz_{{ quiz_id }}_answers";
+let savedAnswers = JSON.parse(localStorage.getItem(quizKey)||"{}");
+const soundAlert = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+
+function startQuiz(){
+  document.getElementById('quizInstructions').style.display='none';
+  document.getElementById('quizContent').style.display='block';
+  bindOptionChange();
+  attachNavHandlers();
+  updateNavStatus();
+}
+
+// Bind every radio input to save on change
+function bindOptionChange(){
+  document.querySelectorAll('.answer-option').forEach(input=>{
+    input.addEventListener('change', function(){
+      const qidx = this.dataset.qindex; // zero-based
+      savedAnswers[qidx] = this.value;
+      localStorage.setItem(quizKey, JSON.stringify(savedAnswers));
+      // If question was marked for review and now has answer, clear review flag
+      if(qNavBtns[qidx] && qNavBtns[qidx].dataset.review==='true'){
+        delete qNavBtns[qidx].dataset.review;
+      }
+      updateNavStatus();
+      // optional: send AJAX to backend here if needed
+    });
+  });
+}
+
+// Navigation handlers
+function attachNavHandlers(){
+  qNavBtns.forEach((btn,i)=>{
+    btn.addEventListener('click', ()=>{
+      showQuestion(i);
+    });
+  });
+}
+
+function showQuestion(index){
+  if(index<0){ showToast("This is the first question","warning"); return; }
+  if(index>=questions.length){ showToast("This is the last question","warning"); return; }
+  questions[currentQ].style.display='none';
+  currentQ=index;
+  questions[currentQ].style.display='block';
+  qNavBtns[index].dataset.visited='true';
+  updateNavStatus();
+  // Update small progress UI
+  document.getElementById('currentIndex').textContent = currentQ+1;
+  const percent = Math.round(((currentQ+1)/questions.length)*100);
+  document.getElementById('progressBar').style.width = percent + '%';
+}
+
+function saveAnswer(){
+  const qidx = currentQ;
+  const checked = questions[qidx].querySelector('.answer-option:checked');
+  if(checked){
+    savedAnswers[qidx] = checked.value;
+    localStorage.setItem(quizKey, JSON.stringify(savedAnswers));
+    // If marked review, clear review when saved
+    if(qNavBtns[qidx] && qNavBtns[qidx].dataset.review==='true'){
+      delete qNavBtns[qidx].dataset.review;
+      showToast('Marked as answered and removed from review','success');
+    } else {
+      showToast('Answer saved','success');
+    }
+  } else {
+    showToast('No option selected','warning');
+  }
+  updateNavStatus();
+}
+
+function saveNext(){ saveAnswer(); showQuestion(currentQ+1); }
+function previousQuestion(){ showQuestion(currentQ-1); }
+
+function toggleReview(){
+  const btn = qNavBtns[currentQ];
+  if(!btn) return;
+  if(btn.dataset.review==='true'){
+    delete btn.dataset.review;
+    showToast('Removed review mark','info');
+  } else {
+    btn.dataset.review='true';
+    btn.dataset.visited='true';
+    showToast('Marked for review','info');
+  }
+  // keep any saved answer in storage as-is
+  updateNavStatus();
+}
+
+function updateNavStatus(){
+  qNavBtns.forEach((btn,i)=>{
+    btn.classList.remove('answered','review','unanswered','notvisited','current');
+    const isCurrent = i===currentQ;
+    const hasAnswer = savedAnswers.hasOwnProperty(i) && savedAnswers[i]!==undefined && savedAnswers[i]!=="";
+    const isReview = btn.dataset.review==='true';
+    if(isCurrent) btn.classList.add('current');
+    if(isReview) btn.classList.add('review');
+    else if(hasAnswer) btn.classList.add('answered');
+    else if(!hasAnswer && btn.dataset.visited==='true') btn.classList.add('unanswered');
+    else btn.classList.add('notvisited');
+  });
+  // sync small timer text
+  document.getElementById('timerTextSmall').textContent = document.getElementById('timerText').textContent;
+}
+
+// Restore previous answers
+questions.forEach((q,i)=>{
+  if(savedAnswers.hasOwnProperty(i)){
+    const input = q.querySelector(`.answer-option[value="${savedAnswers[i]}"]`);
+    if(input) input.checked=true;
+    // mark visited if restored
+    const nav = qNavBtns[i]; if(nav) nav.dataset.visited='true';
+  }
+});
+updateNavStatus();
+
+// Toast helper
+function showToast(msg,type="info"){
+  const toast = document.createElement('div');
+  toast.className=`toast-notification alert alert-${type} shadow`;
+  toast.style.position='fixed'; toast.style.top='1rem'; toast.style.right='1rem'; toast.style.zIndex=9999;
+  toast.innerText=msg;
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),2500);
+}
+
+// Pre-submit modal
+function showPreSubmitModal(){
+  const summary = {answered:0, review:0, unanswered:0};
+  questions.forEach((q,i)=>{
+    const btn = qNavBtns[i];
+    if(btn && btn.dataset.review==='true') summary.review++;
+    else if(savedAnswers.hasOwnProperty(i)) summary.answered++;
+    else summary.unanswered++;
+  });
+  const summaryEl = document.getElementById('preSubmitSummary');
+  summaryEl.innerHTML = `
+    <span class="badge bg-success m-1">Answered: ${summary.answered}</span>
+    <span class="badge bg-primary m-1">Review: ${summary.review}</span>
+    <span class="badge bg-danger m-1">Unanswered: ${summary.unanswered}</span>
+  `;
+  const modal = new bootstrap.Modal(document.getElementById('preSubmitModal'));
+  modal.show();
+  document.getElementById('confirmSubmitBtn').onclick = ()=>{
+    // Before submit, write saved answers into hidden inputs matching server-side expected names (q1..qN)
+    const form = document.getElementById('quizForm');
+    // remove existing hidden helper inputs
+    document.querySelectorAll('.client-hidden-answer').forEach(e=>e.remove());
+    for(let i=0;i<questions.length;i++){
+      const val = savedAnswers[i]||"";
+      const input = document.createElement('input');
+      input.type='hidden'; input.name = 'q'+(i+1); input.value = val; input.className='client-hidden-answer';
+      form.appendChild(input);
+    }
+    // submit
+    modal.hide();
+    form.submit();
+    localStorage.removeItem(quizKey);
+    localStorage.removeItem("quiz_{{ quiz_id }}_time_left");
+  };
+}
+
+document.querySelector('#quizForm')?.addEventListener('submit',function(e){
+  // prevent default submission from buttons, use modal review
+  e.preventDefault();
+  saveAnswer();
+  showPreSubmitModal();
+});
+
+// Timer
+let totalTime=parseInt("{{ time_left|default_if_none:300 }}",10);
+let storedTime=localStorage.getItem("quiz_{{ quiz_id }}_time_left");
+let timeLeft=storedTime?parseInt(storedTime,10):totalTime;
+const circle=document.querySelector('.progress-ring__circle');
+const radius=circle.r.baseVal.value;
+const circumference=2*Math.PI*radius;
+circle.style.strokeDasharray=`${circumference} ${circumference}`;
+function setProgress(percent){
+  const offset = circumference - percent/100*circumference;
+  circle.style.strokeDashoffset=offset;
+  if(percent>50) circle.style.stroke='green';
+  else if(percent>25) circle.style.stroke='orange';
+  else circle.style.stroke='red';
+}
+
+function updateTimer(){
+  let minutes=Math.floor(timeLeft/60); let seconds=timeLeft%60;
+  document.getElementById('timerText').textContent=`${minutes}:${seconds<10?'0':''}${seconds}`;
+  setProgress(timeLeft/totalTime*100);
+  if(timeLeft===60){ showToast("⚠ Only 1 minute remaining","warning"); soundAlert.play(); }
+  if(timeLeft<=0){
+    showToast("⏰ Time's up! Submitting quiz...","danger"); soundAlert.play();
+    // auto submit same way as manual submit
+    const form = document.getElementById('quizForm');
+    // prepare hidden inputs
+    document.querySelectorAll('.client-hidden-answer').forEach(e=>e.remove());
+    for(let i=0;i<questions.length;i++){
+      const val = savedAnswers[i]||"";
+      const input = document.createElement('input');
+      input.type='hidden'; input.name = 'q'+(i+1); input.value = val; input.className='client-hidden-answer';
+      form.appendChild(input);
+    }
+    form.submit();
+    localStorage.removeItem(quizKey);
+    localStorage.removeItem("quiz_{{ quiz_id }}_time_left");
+  } else {
+    timeLeft--; localStorage.setItem("quiz_{{ quiz_id }}_time_left",timeLeft);
+    setTimeout(updateTimer,1000);
+  }
+}
+updateTimer();
+
+// Keyboard shortcuts
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
+  const k=e.key.toLowerCase();
+  if(k==='n') saveNext();
+  if(k==='p') previousQuestion();
+  if(/^[1-9]$/.test(k)){
+    const idx=parseInt(k,10)-1;
+    if(idx<questions.length) showQuestion(idx);
+  }
+});
+</script>
+{% endblock %}

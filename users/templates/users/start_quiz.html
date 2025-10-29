@@ -1,0 +1,165 @@
+{% extends "users/base.html" %}
+{% block title %}Start Quiz{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-body p-4">
+          <h2 class="mb-4 text-center fw-bold text-primary">
+            <i class="bi bi-lightbulb"></i> Start a New Quiz
+          </h2>
+
+          <!-- Quiz Start Form -->
+          <form method="post" id="quizStartForm">
+            {% csrf_token %}
+
+            <!-- 🔹 Mixed Quiz Section (Checkboxes) -->
+            <div class="mb-4">
+              <label class="form-label fw-bold">Select Categories for Mixed Quiz (Max 5):</label>
+              <div class="row" id="mixedCategories">
+                {% for c in categories %}
+                  <div class="col-6 col-md-4">
+                    <div class="form-check">
+                      <input 
+                        class="form-check-input mixed-checkbox" 
+                        type="checkbox" 
+                        name="category_choices_multi" 
+                        value="{{ c.id }}" 
+                        id="cat{{ c.id }}"
+                      >
+                      <label class="form-check-label" for="cat{{ c.id }}">{{ c.name }}</label>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              <small class="text-muted d-block mt-2">✅ Tick multiple categories to generate a mixed quiz using AI.</small>
+            </div>
+
+            <hr>
+
+            <!-- 🔹 Single Category Selection -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Choose Existing Category:</label>
+              {{ form.category_choice }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Or Create New Category:</label>
+              {{ form.category_new }}
+            </div>
+
+            <!-- 🔹 Subcategory Section -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Select Subcategory:</label>
+              {{ form.subcategory_choice }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Or Create New Subcategory:</label>
+              {{ form.subcategory_new }}
+            </div>
+
+            <!-- 🔹 Difficulty -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Select Difficulty:</label>
+              {{ form.difficulty }}
+            </div>
+
+            <!-- 🔹 Question Count -->
+            <div class="mb-4">
+              <label class="form-label fw-bold">Number of Questions:</label>
+              {{ form.question_count }}
+              <small class="text-muted d-block mt-1">⏱ Each question automatically gets 60 seconds.</small>
+            </div>
+
+            <!-- 🔹 Submit Button -->
+            <button 
+              type="submit" 
+              class="btn btn-success w-100 py-2 fw-bold rounded-pill"
+              id="startQuizBtn"
+            >
+              <i class="bi bi-play-circle me-2"></i>Start Quiz
+            </button>
+
+            <!-- Loader (hidden initially) -->
+            <div id="loadingSpinner" class="text-center mt-3 d-none">
+              <div class="spinner-border text-primary" role="status"></div>
+              <p class="fw-semibold text-muted mt-2">Generating questions... Please wait ⏳</p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ JavaScript for dynamic subcategories, validation & loader -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const MAX_MIXED = 5;
+  const form = document.getElementById("quizStartForm");
+  const checkboxes = document.querySelectorAll(".mixed-checkbox");
+  const loader = document.getElementById("loadingSpinner");
+  const startBtn = document.getElementById("startQuizBtn");
+
+  // 🔹 Limit to 5 categories in mixed mode
+  checkboxes.forEach(box => {
+    box.addEventListener("change", function() {
+      const checkedCount = document.querySelectorAll(".mixed-checkbox:checked").length;
+      if (checkedCount > MAX_MIXED) {
+        this.checked = false;
+        alert(`⚠ You can select up to ${MAX_MIXED} categories only.`);
+      }
+    });
+  });
+
+  // 🔹 Dynamic subcategory loading
+  const categorySelect = document.getElementById("id_category_choice");
+  const subcategorySelect = document.getElementById("id_subcategory_choice");
+
+  categorySelect?.addEventListener("change", function() {
+    const categoryId = this.value;
+    subcategorySelect.innerHTML = '<option value="">Select subcategory</option>';
+
+    if (!categoryId) return;
+
+    fetch(`/ajax/subcategories/?category_id=${categoryId}`)
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(item => {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = item.name;
+          subcategorySelect.appendChild(option);
+        });
+      })
+      .catch(err => console.error("❌ Error loading subcategories:", err));
+  });
+
+  // 🔹 Form submission with loader and validation
+  form.addEventListener("submit", function(e) {
+    const mixedSelected = document.querySelectorAll(".mixed-checkbox:checked").length;
+
+    if (mixedSelected === 0 && !categorySelect.value && !document.getElementById("id_category_new").value) {
+      e.preventDefault();
+      alert("⚠ Please select or create at least one category to start the quiz.");
+      return;
+    }
+
+    startBtn.disabled = true;
+    loader.classList.remove("d-none");
+  });
+});
+</script>
+
+<!-- Styling -->
+<style>
+  label.form-label { font-weight: 600; }
+  .form-control, .form-select { border-radius: 10px; }
+  .card { transition: all 0.3s ease; }
+  .card:hover { transform: scale(1.01); }
+  .spinner-border { width: 2rem; height: 2rem; }
+</style>
+{% endblock %}

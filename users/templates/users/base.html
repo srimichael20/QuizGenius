@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}AI Quiz Management System{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      transition: background 0.6s ease, color 0.6s ease;
+      overflow-x: hidden;
+      overflow-y: auto; /* enable scrolling */
+      position: relative;
+    }
+
+    .navbar, .card {
+      backdrop-filter: blur(12px);
+      border-radius: 15px;
+      box-shadow: 0px 4px 20px rgba(0,0,0,0.4);
+      transition: all 0.4s ease;
+    }
+
+    .navbar-brand {
+      font-weight: 600;
+      font-size: 1.4rem;
+      transition: transform 0.3s, color 0.3s;
+    }
+    .navbar-brand:hover {
+      transform: scale(1.05);
+      color: var(--bs-primary) !important;
+    }
+
+    .btn {
+      border-radius: 25px;
+      transition: all 0.3s ease;
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 15px rgba(0,180,255,0.6);
+    }
+
+    .fade-in { animation: fadeInUp 1s ease; }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ---------- Theme Definitions ---------- */
+    .theme-default { background: #f8f9fa; color: #212529; }
+    .theme-dark { background: #0d1117; color: #e6e6e6; }
+    .theme-dark .navbar, .theme-dark .card { background: rgba(20, 20, 25, 0.85); color: #f1f1f1; }
+    .theme-gradient { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; }
+
+    /* Animated Stars */
+    .theme-animated-stars {
+      background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+      color: white; 
+      position: relative;
+    }
+    .theme-animated-stars::before {
+      content: '';
+      position: fixed; /* fixed so scroll works */
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: transparent url("https://www.transparenttextures.com/patterns/stardust.png") repeat;
+      animation: moveStars 60s linear infinite;
+      opacity: 0.6;
+      pointer-events: none; /* allow clicks/scroll */
+      z-index: -1;
+    }
+    @keyframes moveStars { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+
+    /* CSS Confetti Theme */
+    .theme-confetti {
+      background: #0d1117;
+      color: white;
+      position: relative;
+      overflow: visible; /* allow scroll */
+    }
+    .theme-confetti span {
+      position: fixed; /* fixed to avoid blocking scroll */
+      display: block;
+      width: 8px;
+      height: 8px;
+      background-color: red;
+      opacity: 0.7;
+      pointer-events: none; /* allow scroll/clicks */
+      animation: confettiFall 4s linear infinite;
+      z-index: -1;
+    }
+    @keyframes confettiFall {
+      0% { transform: translateY(-10px) rotate(0deg); }
+      100% { transform: translateY(100vh) rotate(360deg); }
+    }
+
+    /* Particle Theme */
+    .theme-particles {
+      background: #001f3f;
+      color: white;
+      position: relative;
+      overflow: visible; /* allow scroll */
+    }
+    .theme-particles::before {
+      content: '';
+      position: fixed; /* fixed */
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle, rgba(255,255,255,0.6) 2px, transparent 2px);
+      background-size: 40px 40px;
+      animation: particlesMove 15s linear infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+    @keyframes particlesMove { 0% { transform: translate(0,0); } 100% { transform: translate(100px,100px); } }
+
+    /* Other themes (galaxy, matrix, aurora) */
+    .theme-galaxy { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%); color: #e0e6ff; }
+    .theme-galaxy::before { content: ""; position: fixed; width: 2px; height: 2px; background: transparent; 
+      box-shadow: 100px 200px #fff, 200px 300px #fff, 300px 100px #fff, 400px 400px #fff, 500px 250px #fff, 
+      600px 150px #fff, 700px 350px #fff, 800px 100px #fff, 900px 450px #fff;
+      animation: twinkle 4s infinite alternate; pointer-events: none; z-index: -1; }
+    @keyframes twinkle { from { opacity: 0.3; } to { opacity: 1; } }
+
+    .theme-matrix { background: #000; color: #0f0; overflow: visible; }
+    .theme-matrix::before { content: "010101001010101010100101"; position: fixed; top:0; left:0;
+      width:100%; height:100%; color:#0f0; opacity:0.1; font-size:24px; line-height:20px;
+      white-space: pre-wrap; animation: matrixFall 20s linear infinite; pointer-events: none; z-index:-1; }
+    @keyframes matrixFall { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+
+    .theme-aurora { background: linear-gradient(120deg, #00111f, #003b5c, #220044); color:#e1f5ff; 
+      background-size:200% 200%; animation: auroraMove 12s ease-in-out infinite alternate; }
+    @keyframes auroraMove { 0%{background-position:0% 50%;} 100%{background-position:100% 50%;} }
+
+    .card h5, .card h6, .card p, .card a, .navbar a { color: inherit !important; }
+
+  </style>
+</head>
+
+<body class="theme-{{ request.user.profile.theme|default:'default' }}">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg px-3 mb-4">
+    <div class="collapse navbar-collapse justify-content-end">
+      {% if not request.user.is_authenticated %}
+        <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">Login</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mt-4 fade-in">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} text-center">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- JS for generating multiple confetti spans dynamically -->
+  <script>
+    const confettiTheme = document.querySelector('.theme-confetti');
+    if(confettiTheme){
+      for(let i=0;i<80;i++){
+        let span = document.createElement('span');
+        span.style.left = Math.random()*100 + 'vw';
+        span.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+        span.style.width = span.style.height = Math.random()*8 + 4 + 'px';
+        span.style.animationDuration = 2 + Math.random()*3 + 's';
+        span.style.animationDelay = Math.random()*5 + 's';
+        span.classList.add('confetti');
+        confettiTheme.appendChild(span);
+      }
+    }
+  </script>
+</body>
+</html>
