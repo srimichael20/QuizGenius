@@ -21,11 +21,8 @@
 - [📘 About the Project](#-about-the-project)
 - [🎯 Features](#-features)
 - [🛠️ Tech Stack](#%EF%B8%8F-tech-stack)
-- [⚙️ Installation & Setup](#%EF%B8%8F-installation--setup)
 - [📸 Screenshots](#-screenshots)
-- [🚀 Future Enhancements](#-future-enhancements)
-- [👨‍💻 Contributors](#-contributors)
-- [🙏 Acknowledgements](#-acknowledgements)
+- [⚙️ Installation & Setup](#%EF%B8%8F-installation--setup)
 - [📜 License](#-license)
 
 ---
@@ -60,9 +57,20 @@ It uses **OpenAI’s GPT model** to dynamically generate questions based on sele
 
 ---
 
+## Screenshots
+<img src="https://github.com/srimichael20/QuizGenius/blob/srimichael/Login.png" >
+<img src= "https://github.com/srimichael20/QuizGenius/blob/srimichael/Home.png" >
+<img src="https://github.com/srimichael20/QuizGenius/blob/srimichael/Quiz_take.png">
+<img src="https://github.com/srimichael20/QuizGenius/blob/srimichael/Quiz.png" >
+
+---
+
+
 ## ⚙️ Installation & Setup
 
 ### 🧩 Clone the Repository
 ```bash
 git clone https://github.com/<your-username>/QuizGenius.git
 cd QuizGenius
+
+
